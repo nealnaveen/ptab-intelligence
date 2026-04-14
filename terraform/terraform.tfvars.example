@@ -1,0 +1,6 @@
+aws_region          = "us-east-1"
+environment         = "dev"
+account_id          = "604881392797"
+pinecone_api_key    = "your_pinecone_key_here"
+anthropic_api_key   = "your_anthropic_key_here"
+pinecone_index_name = "ptab-documents"
