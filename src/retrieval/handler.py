@@ -12,8 +12,9 @@ import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-bedrock = boto3.client("bedrock-runtime", region_name=os.environ["AWS_REGION_NAME"])
-secrets = boto3.client("secretsmanager")
+_REGION = os.environ.get("AWS_REGION_NAME", os.environ.get("AWS_REGION", "us-east-1"))
+bedrock = boto3.client("bedrock-runtime", region_name=_REGION)
+secrets = boto3.client("secretsmanager", region_name=_REGION)
 
 
 def get_secret(secret_arn: str) -> str:

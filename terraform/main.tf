@@ -105,6 +105,7 @@ resource "aws_lambda_function" "rag_query" {
   image_uri     = "${aws_ecr_repository.ptab_rag.repository_url}:latest"
   timeout       = 30
   memory_size   = 512
+  architectures = ["arm64"]
 
   environment {
     variables = {
@@ -113,6 +114,7 @@ resource "aws_lambda_function" "rag_query" {
       PINECONE_INDEX_NAME  = var.pinecone_index_name
       S3_BUCKET            = aws_s3_bucket.ptab_docs.id
       AWS_REGION_NAME      = var.aws_region
+      ANTHROPIC_MODEL      = "claude-haiku-4-5-20251001"
     }
   }
 
@@ -121,6 +123,40 @@ resource "aws_lambda_function" "rag_query" {
   lifecycle {
     ignore_changes = [image_uri]
   }
+}
+
+# ── Lambda: Browse function (ZIP — no container needed, boto3 is built-in) ───
+data "archive_file" "browse_lambda" {
+  type        = "zip"
+  source_file = "${path.module}/../src/browse/handler.py"
+  output_path = "${path.module}/browse_lambda.zip"
+}
+
+resource "aws_lambda_function" "browse" {
+  function_name    = "ptab-browse"
+  role             = aws_iam_role.lambda_exec.arn
+  handler          = "handler.handler"
+  runtime          = "python3.12"
+  filename         = data.archive_file.browse_lambda.output_path
+  source_code_hash = data.archive_file.browse_lambda.output_base64sha256
+  timeout          = 30
+  memory_size      = 256
+  architectures    = ["arm64"]
+
+  environment {
+    variables = {
+      S3_BUCKET       = aws_s3_bucket.ptab_docs.id
+      AWS_REGION_NAME = var.aws_region
+    }
+  }
+}
+
+resource "aws_lambda_permission" "browse_api_gw" {
+  statement_id  = "AllowAPIGatewayInvokeBrowse"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.browse.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.ptab_api.execution_arn}/*/*"
 }
 
 # ── API Gateway ───────────────────────────────────────────────────────────────
@@ -146,6 +182,19 @@ resource "aws_apigatewayv2_route" "query" {
   api_id    = aws_apigatewayv2_api.ptab_api.id
   route_key = "POST /query"
   target    = "integrations/${aws_apigatewayv2_integration.rag_query.id}"
+}
+
+resource "aws_apigatewayv2_integration" "browse" {
+  api_id             = aws_apigatewayv2_api.ptab_api.id
+  integration_type   = "AWS_PROXY"
+  integration_uri    = aws_lambda_function.browse.invoke_arn
+  integration_method = "POST"
+}
+
+resource "aws_apigatewayv2_route" "browse" {
+  api_id    = aws_apigatewayv2_api.ptab_api.id
+  route_key = "GET /browse/{docType}"
+  target    = "integrations/${aws_apigatewayv2_integration.browse.id}"
 }
 
 resource "aws_apigatewayv2_stage" "default" {
