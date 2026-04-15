@@ -165,7 +165,13 @@ def handler(event, context):
 
         # Step 4: Generate grounded answer using the original question
         # (so Claude's answer matches the user's phrasing, not the normalized form)
-        answer = generate_answer(context_text, question, anthropic_key)
+        try:
+            answer = generate_answer(context_text, question, anthropic_key)
+        except Exception as e:
+            err = str(e)
+            if "529" in err or "overloaded" in err.lower():
+                return _err(503, "The AI service is temporarily busy. Please try again in a moment.")
+            raise
 
         return {
             "statusCode": 200,
@@ -187,3 +193,14 @@ def handler(event, context):
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps({"error": "Internal server error"}),
         }
+
+
+def _err(status: int, message: str) -> dict:
+    return {
+        "statusCode": status,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+        },
+        "body": json.dumps({"error": message}),
+    }
