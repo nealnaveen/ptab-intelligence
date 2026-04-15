@@ -4,16 +4,17 @@ const API_URL = process.env.API_GATEWAY_URL;
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { type: string } }
+  { params }: { params: Promise<{ type: string }> }
 ) {
   if (!API_URL) {
     return NextResponse.json({ error: "API_GATEWAY_URL is not configured" }, { status: 500 });
   }
 
   try {
+    const { type } = await params;
     const { searchParams } = new URL(req.url);
     const upstream = await fetch(
-      `${API_URL}/browse/${params.type}?${searchParams.toString()}`,
+      `${API_URL}/browse/${type}?${searchParams.toString()}`,
       { headers: { Accept: "application/json" } }
     );
 
