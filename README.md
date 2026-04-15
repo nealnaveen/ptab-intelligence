@@ -66,3 +66,4 @@ Raw PTAB document ingestion handled by companion repos:
 - [ptabdatacollector](https://github.com/nealnaveen/ptabdatacollector) — PTAB-specific data
 
 Documents are ingested into `s3://ptab-documents-604881392797` and automatically indexed on upload.
+# ptab-intelligence
