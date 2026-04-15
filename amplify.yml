@@ -3,10 +3,10 @@ frontend:
   phases:
     preBuild:
       commands:
-        - cd ui && npm ci
+        - npm --prefix ui ci
     build:
       commands:
-        - cd ui && npm run build
+        - npm --prefix ui run build
   artifacts:
     baseDirectory: ui/.next
     files:
